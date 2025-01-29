@@ -1,0 +1,46 @@
+name: Deploy githubApiApp to Minikube
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Build Java application
+        run: mvn clean package
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            --build-arg JAR_FILE=target/githubApiApp-0.0.1-SNAPSHOT.jar \
+            -t githubapiapp:latest .
+
+      - name: Start Minikube
+        run: |
+          minikube start
+          minikube docker-env
+          eval $(minikube docker-env)
+
+      - name: Load Docker image into Minikube
+        run: minikube image load githubapiapp:latest
+
+      - name: Deploy to Minikube
+        run: |
+          kubectl apply -f deployment.yaml
+          kubectl apply -f service.yaml
+
+      - name: Verify deployment
+        run: kubectl get pods
